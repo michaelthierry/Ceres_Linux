@@ -1,0 +1,47 @@
+# This file contains metadata for your plugin.
+
+# This file should be included when you package your plugin.# Mandatory items:
+
+[general]
+name=Ceres
+qgisMinimumVersion=3.0
+description=Automação de Cálculo NDVI
+version=0.1
+author=Michael Thierry da Silva
+email=michaelthierry86@gmail.com
+
+about=Automação na produção de mapas NDVI e dados estatísticos do mesmo.
+
+tracker=http://bugs
+repository=https://github.com/michaelthierry/Ceres_Linux
+# End of mandatory metadata
+
+# Recommended items:
+
+hasProcessingProvider=no
+# Uncomment the following line and add your changelog:
+# changelog=
+
+# Tags are comma separated with spaces allowed
+tags=python, calculator, csv, processing, shapefile, export, vector, statistics
+
+homepage=http://homepage
+category=Plugins
+icon=icon.png
+# experimental flag
+experimental=True
+
+# deprecated flag (applies to the whole plugin, not just a single version)
+deprecated=False
+
+# Since QGIS 3.8, a comma separated list of plugins to be installed
+# (or upgraded) can be specified.
+# Check the documentation for more information.
+# plugin_dependencies=
+
+Category of the plugin: Raster, Vector, Database or Web
+# category=
+
+# If the plugin can run on QGIS Server.
+server=False
+
