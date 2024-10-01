@@ -31,6 +31,8 @@ from .resources import *
 from .ceres_dialog import CeresDialog
 import os.path
 
+# Minhas importações
+import json
 
 class Ceres:
     """QGIS Plugin Implementation."""
@@ -62,6 +64,15 @@ class Ceres:
         # Declare instance attributes
         self.actions = []
         self.menu = self.tr(u'&Ceres')
+        self.user = None
+
+        # Tenta pegar o arquivo de usuarios onde tem as credenciais
+        try:
+            with open(self.plugin_dir+'/config.json', 'r') as credenciais:
+                self.user = json.load(credenciais)
+                credenciais.close()
+        except:
+            print("Erro ao carregar credenciais do arquivo")
 
         # Check if plugin was started the first time in current QGIS session
         # Must be set in initGui() to survive plugin reloads
