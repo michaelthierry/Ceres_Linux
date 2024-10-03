@@ -32,7 +32,15 @@ from .ceres_dialog import CeresDialog
 import os.path
 
 # Minhas importações
+from qgis.gui import QgsMessageBar
+from qgis.core import(
+    Qgis,
+    QgsApplication  
+)
 import json
+import requests
+
+URL_AUTH = "https://identity.dataspace.copernicus.eu/auth/realms/CDSE/protocol/openid-connect/token"
 
 class Ceres:
     """QGIS Plugin Implementation."""
@@ -64,13 +72,17 @@ class Ceres:
         # Declare instance attributes
         self.actions = []
         self.menu = self.tr(u'&Ceres')
+        # 
         self.user = None
+        self.token = None
+        self.mensagens = QgsMessageBar()
 
         # Tenta pegar o arquivo de usuarios onde tem as credenciais
         try:
             with open(self.plugin_dir+'/config.json', 'r') as credenciais:
                 self.user = json.load(credenciais)
                 credenciais.close()
+            
         except:
             print("Erro ao carregar credenciais do arquivo")
 
@@ -92,7 +104,6 @@ class Ceres:
         """
         # noinspection PyTypeChecker,PyArgumentList,PyCallByClass
         return QCoreApplication.translate('Ceres', message)
-
 
     def add_action(
         self,
@@ -189,6 +200,90 @@ class Ceres:
                 self.tr(u'&Ceres'),
                 action)
             self.iface.removeToolBarIcon(action)
+    
+    """
+    +---------------------------------------------+
+    | METODOS UTILIZADO PARA AS TAREFAS DO PLUGIN |
+    +---------------------------------------------+
+    """
+    """
+        # METODOS PARA LOGIN 
+    """
+    def login(self):
+        """
+        Este método é responsavel por validar o cadastro do usuario no sistema copernicus
+        e obter o token de acesso como o qual ele poderá obter o produtos (pacotes de imagens do mesmo)
+        """
+
+        # Pega usuario e senha das caixas de edição
+        #self.usuario = self.dlg.lineEdit_5.text().strip()
+        #self.senha = self.dlg.mLineEdit.text().strip()
+
+        # Automatizando preenchimento de senha e login
+        self.usuario = self.user["user"]["login"]
+        self.senha = self.user["user"]["pass"]
+
+        # tenta fazer conexão
+        try:
+            self.token = self.pegar_token(self.usuario, self.senha)
+            # se o token estiver ok
+            if self.token is not None:
+                # exibe mensagem
+                self.pop_up(3, "Acesso Autorizado!", 3)
+                # ativa a tabela de parametros
+                self.dlg.tabWidget.setTabEnabled(1, True)
+            else:
+                self.pop_up(1, "Senha ou usuário incorretos", 5)
+        except Exception as e:
+            self.pop_up(1, "Senha ou usuário incorretos", 5)
+        
+
+        #print(self.user+"\n"+self.senha)
+
+        print("Login: "+self.user["user"]["login"])
+        print("Pass: "+ self.user["user"]["pass"])
+
+
+    def pegar_token(self, usuario, senha):
+        """
+            # Metodo para obter o token de acesso ao copernicus e seus recursos e serviços 
+        """
+        # criando conjunto de dados
+        dados = {
+            "client_id": "cdse-public",
+            "username": usuario,
+            "password": senha,
+            "grant_type": "password"
+        }
+
+        # tentando obter o token
+        try:
+            resposta = requests.post(URL_AUTH, data=dados)
+            resposta.raise_for_status()
+            return resposta.json()["access_token"]
+        except Exception as e:
+            raise Exception(f"Falha ao criar o token de acesso. Resposta de servidor {resposta.json()}")
+
+    def pop_up(self, codigo, mensagem, tempo):
+        # de acordo com o codigo é exibida uma determinada mensagem e tempo
+        if codigo == 0:
+            self.mensagens.clearWidgets()
+            self.mensagens.pushMessage(mensagem, level=Qgis.Info, duration=tempo)
+            QgsApplication.processEvents()
+        elif codigo == 1:
+            self.mensagens.clearWidgets()
+            self.mensagens.pushMessage(mensagem, level=Qgis.Warning, duration=tempo)
+            QgsApplication.processEvents()
+        elif codigo == 2:
+            self.mensagens.clearWidgets()
+            self.mensagens.pushMessage(mensagem, level=Qgis.Critical, duration=tempo)
+            QgsApplication.processEvents()
+        elif codigo == 3:
+            self.mensagens.clearWidgets()
+            self.mensagens.pushMessage(mensagem, level=Qgis.Success, duration=tempo)
+            QgsApplication.processEvents()
+        else:
+            print("Erro: Código invalido")
 
 
     def run(self):
@@ -202,10 +297,22 @@ class Ceres:
 
         # show the dialog
         self.dlg.show()
+
+        # conectores de botões
+        self.dlg.pushButton.clicked.connect(self.login)
+        # desliga a segunda aba
+        self.dlg.tabWidget.setTabEnabled(1, False)
+        
         # Run the dialog event loop
         result = self.dlg.exec_()
+        
         # See if OK was pressed
         if result:
             # Do something useful here - delete the line containing pass and
             # substitute with your code.
             pass
+
+                
+        # desconectores de botões
+        self.dlg.pushButton.clicked.disconnect(self.login)
+       

@@ -26,7 +26,7 @@
     </rect>
    </property>
    <property name="styleSheet">
-    <string notr="true">background-color: rgb(51, 53, 51);
+    <string notr="true">background-color: rgb(69, 69, 69);
 color: rgb(205, 156, 32);</string>
    </property>
    <property name="tabShape">
