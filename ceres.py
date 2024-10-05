@@ -32,15 +32,21 @@ from .ceres_dialog import CeresDialog
 import os.path
 
 # Minhas importações
-from qgis.gui import QgsMessageBar
-from qgis.core import(
+from qgis.gui   import QgsMessageBar
+from qgis.core  import(
     Qgis,
-    QgsApplication  
+    QgsApplication
+  
 )
+from PyQt5.QtCore   import QUrl
+from PyQt5.QtGui    import QDesktopServices
 import json
 import requests
 
+
+
 URL_AUTH = "https://identity.dataspace.copernicus.eu/auth/realms/CDSE/protocol/openid-connect/token"
+URL_CREATE_COUNT = "https://identity.dataspace.copernicus.eu/auth/realms/CDSE/login-actions/registration?client_id=cdse-public&tab_id=996ti_TWJXI"
 
 class Ceres:
     """QGIS Plugin Implementation."""
@@ -207,7 +213,7 @@ class Ceres:
     +---------------------------------------------+
     """
     """
-        # METODOS PARA LOGIN 
+        # METODOS PARA LOGIN, LEMBRE-ME E CADAATRO NO COPERNICUS
     """
     def login(self):
         """
@@ -242,7 +248,6 @@ class Ceres:
 
         print("Login: "+self.user["user"]["login"])
         print("Pass: "+ self.user["user"]["pass"])
-
 
     def pegar_token(self, usuario, senha):
         """
@@ -285,6 +290,9 @@ class Ceres:
         else:
             print("Erro: Código invalido")
 
+    def abir_site_copernicus(self):
+        url = QUrl(URL_CREATE_COUNT)
+        QDesktopServices.openUrl(url)
 
     def run(self):
         """Run method that performs all the real work"""
@@ -297,9 +305,14 @@ class Ceres:
 
         # show the dialog
         self.dlg.show()
-
-        # conectores de botões
+        
+        """
+        +---------------------------+
+        |   conectores de botões    |
+        +---------------------------+
+        """
         self.dlg.pushButton.clicked.connect(self.login)
+        self.dlg.commandLinkButton.clicked.connect(self.abir_site_copernicus)
         
         # desliga a segunda aba
         self.dlg.tabWidget.setTabEnabled(1, False)
@@ -318,8 +331,13 @@ class Ceres:
             # Do something useful here - delete the line containing pass and
             # substitute with your code.
             pass
-
-                
-        # desconectores de botões
+       
+        
+        """
+        +------------------------------+
+        |   desconectores de botões    |
+        +------------------------------+
+        """
         self.dlg.pushButton.clicked.disconnect(self.login)
+        
        
