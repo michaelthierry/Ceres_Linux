@@ -23,7 +23,10 @@
 """
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication
 from qgis.PyQt.QtGui import QIcon
-from qgis.PyQt.QtWidgets import QAction
+from qgis.PyQt.QtWidgets import (
+    QAction,
+    QFileDialog
+)
 
 # Initialize Qt resources from file resources.py
 from .resources import *
@@ -213,7 +216,7 @@ class Ceres:
     +---------------------------------------------+
     """
     """
-        # METODOS PARA LOGIN, LEMBRE-ME E CADAATRO NO COPERNICUS
+        # METODOS PARA LOGIN, LEMBRE-ME E CADASTRO NO COPERNICUS
     """
     def login(self):
         """
@@ -242,12 +245,6 @@ class Ceres:
                 self.pop_up(1, "Senha ou usuário incorretos", 5)
         except Exception as e:
             self.pop_up(1, "Senha ou usuário incorretos", 5)
-        
-
-        #print(self.user+"\n"+self.senha)
-
-        print("Login: "+self.user["user"]["login"])
-        print("Pass: "+ self.user["user"]["pass"])
 
     def pegar_token(self, usuario, senha):
         """
@@ -294,6 +291,39 @@ class Ceres:
         url = QUrl(URL_CREATE_COUNT)
         QDesktopServices.openUrl(url)
 
+    """
+        # METODOS PARA DOWNLOAD DOS PRODUTOS DO COPERNICUS POR MEIO DE UM PRODUTO PASSADO. 
+    """
+    def download(self):
+        """
+        - pega as coordendas
+        - pega os ids
+        - cria requisição
+        - faz download da banda
+        """
+        pass
+    
+    def carregar_shape_file(self):
+        """
+        # Ao clicar no botão ao lado do campo do shapefile o usuário pode buscar um shape file no seu diretório 
+        """
+        # limpa a linha de edição do caminho do shapefile
+        self.dlg.lineEdit.clear()
+        shape = QFileDialog.getOpenFileName(self.dlg, "Select input file", "", "*.shp")
+        self.dlg.lineEdit.setText(shape[0])
+
+    def pegar_coordenadas(self, layer):
+        pass
+    
+    def pegar_ids_produtos(self, coordenadas, data):
+        pass
+
+    def criar_requisicao_download(self, idProduto):
+        pass
+
+    def download_banda(self, caminho, secao, requisicao, nome):
+        pass
+
     def run(self):
         """Run method that performs all the real work"""
 
@@ -305,6 +335,14 @@ class Ceres:
 
         # show the dialog
         self.dlg.show()
+
+        """
+        +---------------------------+
+        | limpa as linhas de edição |
+        +---------------------------+ 
+        """
+        #Linha do shapefile
+        self.dlg.lineEdit.clear()
         
         """
         +---------------------------+
@@ -313,6 +351,8 @@ class Ceres:
         """
         self.dlg.pushButton.clicked.connect(self.login)
         self.dlg.commandLinkButton.clicked.connect(self.abir_site_copernicus)
+        self.dlg.pushButton_2.clicked.connect(self.download)
+        self.dlg.toolButton.clicked.connect(self.carregar_shape_file)
         
         # desliga a segunda aba
         self.dlg.tabWidget.setTabEnabled(1, False)
@@ -339,5 +379,7 @@ class Ceres:
         +------------------------------+
         """
         self.dlg.pushButton.clicked.disconnect(self.login)
+        self.dlg.pushButton_2.clicked.disconnect(self.download)
+        self.dlg.toolButton.clicked.disconnect(self.carregar_shape_file)
         
        
