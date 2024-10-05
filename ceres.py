@@ -318,6 +318,9 @@ class Ceres:
             if layer is None:
                 self.pop_up(2, "Crítico: Shape não encontrado.", 5)
             else:
+                # pega as coordenada
+                poligono = self.pegar_coordenadas(layer)
+                print(poligono)
                 print("Encontrado os shapefile")
 
         except Exception as e:
@@ -332,8 +335,30 @@ class Ceres:
         shape = QFileDialog.getOpenFileName(self.dlg, "Select input file", "", "*.shp")
         self.dlg.lineEdit.setText(shape[0])
 
-    def pegar_coordenadas(self, layer):
-        pass
+    def pegar_coordenadas(self, shape):
+        # Pega os pontos as coordenadas do shapefile e retorna as coordenadas do poligono
+        try:
+            # Pegando as coordenadas do shape file
+            xMin = shape.extent().xMinimum()
+            xMax = shape.extent().xMaximum()
+            yMin = shape.extent().yMinimum()
+            yMax = shape.extent().yMaximum()
+
+            # criando os pontos
+            ponto1 = "{:.2f} {:.2f}".format(xMax, yMin)
+            ponto2 = "{:.2f} {:.2f}".format(xMin, yMin)
+            ponto3 = "{:.2f} {:.2f}".format(xMin, yMax)
+            ponto4 = "{:.2f} {:.2f}".format(xMax, yMax)
+
+            # criando o poligono
+            poligono = "POLYGON(({}, {}, {}, {}, {}))".format(ponto1, ponto2, ponto3, ponto4, ponto1)
+            
+            # retorna poligono
+            return poligono
+                           
+        except Exception as e:
+            print(f"Erro:{e}")
+    
     
     def pegar_ids_produtos(self, coordenadas, data):
         pass
