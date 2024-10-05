@@ -38,8 +38,9 @@ import os.path
 from qgis.gui   import QgsMessageBar
 from qgis.core  import(
     Qgis,
-    QgsApplication
-  
+    QgsApplication,
+    QgsProject,
+    QgsVectorLayer
 )
 from PyQt5.QtCore   import QUrl
 from PyQt5.QtGui    import QDesktopServices
@@ -301,7 +302,26 @@ class Ceres:
         - cria requisição
         - faz download da banda
         """
-        pass
+        try:
+            # pegando o caminho do shape file pela linha de edição.
+            # shape_file_path = self.dlg.lineEdit.text()
+            # automatizando o processo 
+            shape_file_path = self.user["rotas"]["shape"]
+            
+            # adiciona o vetor no Layer do Qgis
+            self.iface.addVectorLayer(shape_file_path, "Shape", "ogr")
+            shape = QgsProject.instance().mapLayersByName("Shape")[0]
+            # Recupera o shape pelo path
+            layer = QgsVectorLayer(shape_file_path, "Shape", "ogr")
+            
+            # verificação do layer
+            if layer is None:
+                self.pop_up(2, "Crítico: Shape não encontrado.", 5)
+            else:
+                print("Encontrado os shapefile")
+
+        except Exception as e:
+            print(f"Erro: {e}")
     
     def carregar_shape_file(self):
         """
