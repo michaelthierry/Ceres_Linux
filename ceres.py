@@ -300,8 +300,15 @@ class Ceres:
 
         # conectores de botões
         self.dlg.pushButton.clicked.connect(self.login)
+        
         # desliga a segunda aba
         self.dlg.tabWidget.setTabEnabled(1, False)
+
+        # verifica se  o botão de lembre esta ativo
+        if not self.dlg.checkBox.isChecked():
+            # limpa os campos de login e de senha
+            self.dlg.lineEdit_5.clear()
+            self.dlg.mLineEdit.clear()
         
         # Run the dialog event loop
         result = self.dlg.exec_()
