@@ -33,7 +33,7 @@ color: rgb(205, 156, 32);</string>
     <enum>QTabWidget::Rounded</enum>
    </property>
    <property name="currentIndex">
-    <number>0</number>
+    <number>1</number>
    </property>
    <widget class="QWidget" name="tab">
     <attribute name="title">
@@ -276,6 +276,16 @@ color: rgb(11, 11, 11);</string>
         <height>25</height>
        </rect>
       </property>
+      <property name="dateTime">
+       <datetime>
+        <hour>23</hour>
+        <minute>0</minute>
+        <second>0</second>
+        <year>2024</year>
+        <month>1</month>
+        <day>1</day>
+       </datetime>
+      </property>
      </widget>
      <widget class="QDateEdit" name="dateEdit_2">
       <property name="geometry">
@@ -285,6 +295,16 @@ color: rgb(11, 11, 11);</string>
         <width>110</width>
         <height>25</height>
        </rect>
+      </property>
+      <property name="dateTime">
+       <datetime>
+        <hour>23</hour>
+        <minute>0</minute>
+        <second>0</second>
+        <year>2024</year>
+        <month>1</month>
+        <day>1</day>
+       </datetime>
       </property>
      </widget>
      <widget class="QToolButton" name="toolButton">

@@ -44,6 +44,7 @@ from qgis.core  import(
 )
 from PyQt5.QtCore   import QUrl
 from PyQt5.QtGui    import QDesktopServices
+from datetime       import datetime
 import json
 import requests
 
@@ -318,11 +319,10 @@ class Ceres:
             if layer is None:
                 self.pop_up(2, "Crítico: Shape não encontrado.", 5)
             else:
-                # pega as coordenada
+                # pega as coordenada e retorna as string do poligono
                 poligono = self.pegar_coordenadas(layer)
-                print(poligono)
-                print("Encontrado os shapefile")
-
+                # tenta pegar as datas
+                data = self.pegar_datas() 
         except Exception as e:
             print(f"Erro: {e}")
     
@@ -358,8 +358,34 @@ class Ceres:
                            
         except Exception as e:
             print(f"Erro:{e}")
+            self.pop_up(2, "Houve um  erro ao pegar as coordenadas", 5)
+            return None
     
-    
+    def pegar_datas(self):
+        # tenta pegar as datas
+        try:
+            # lê os campos de edição
+            dataInicial = self.dlg.dateEdit.text().replace("/", "-")
+            dataFinal = self.dlg.dateEdit_2.text().replace("/", "-")
+            # dividindo a tada em dia, mes e ano
+            dia, mes, ano = dataInicial.split('-')
+            dia1, mes1, ano1 = dataFinal.split('-')
+            # formatado as datas
+            dataInicial = f"{ano}-{mes}-{dia}"
+            dataFinal = f"{ano1}-{mes1}-{dia1}"
+            # convertendo para objetos do tipo data
+            formato = "%Y-%m-%d"
+            data1 = datetime.strptime(dataInicial, formato)
+            data2 = datetime.strptime(dataFinal, formato)
+            # comparando as datas
+            if data1 > data2: 
+                self.pop_up(2, "Erro: intervalo de datas inválido, data inicial maior que data final", 5)
+            elif data1 <= data2:
+                data = [dataInicial, dataFinal]
+                return data
+        except Exception as e:
+            self.pop_up(2, "Erro: ao pegar as datas", 3)
+
     def pegar_ids_produtos(self, coordenadas, data):
         pass
 
