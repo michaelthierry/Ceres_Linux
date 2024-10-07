@@ -23,7 +23,10 @@
 """
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication
 from qgis.PyQt.QtGui import QIcon
-from qgis.PyQt.QtWidgets import QAction
+from qgis.PyQt.QtWidgets import (
+    QAction,
+    QFileDialog
+)
 
 # Initialize Qt resources from file resources.py
 from .resources import *
@@ -31,6 +34,24 @@ from .resources import *
 from .ceres_dialog import CeresDialog
 import os.path
 
+# Minhas importações
+from qgis.gui   import QgsMessageBar
+from qgis.core  import(
+    Qgis,
+    QgsApplication,
+    QgsProject,
+    QgsVectorLayer
+)
+from PyQt5.QtCore   import QUrl
+from PyQt5.QtGui    import QDesktopServices
+from datetime       import datetime
+import json
+import requests
+
+
+
+URL_AUTH = "https://identity.dataspace.copernicus.eu/auth/realms/CDSE/protocol/openid-connect/token"
+URL_CREATE_COUNT = "https://identity.dataspace.copernicus.eu/auth/realms/CDSE/login-actions/registration?client_id=cdse-public&tab_id=996ti_TWJXI"
 
 class Ceres:
     """QGIS Plugin Implementation."""
@@ -62,6 +83,19 @@ class Ceres:
         # Declare instance attributes
         self.actions = []
         self.menu = self.tr(u'&Ceres')
+        # 
+        self.user = None
+        self.token = None
+        self.mensagens = QgsMessageBar()
+
+        # Tenta pegar o arquivo de usuarios onde tem as credenciais
+        try:
+            with open(self.plugin_dir+'/config.json', 'r') as credenciais:
+                self.user = json.load(credenciais)
+                credenciais.close()
+            
+        except:
+            print("Erro ao carregar credenciais do arquivo")
 
         # Check if plugin was started the first time in current QGIS session
         # Must be set in initGui() to survive plugin reloads
@@ -81,7 +115,6 @@ class Ceres:
         """
         # noinspection PyTypeChecker,PyArgumentList,PyCallByClass
         return QCoreApplication.translate('Ceres', message)
-
 
     def add_action(
         self,
@@ -178,7 +211,189 @@ class Ceres:
                 self.tr(u'&Ceres'),
                 action)
             self.iface.removeToolBarIcon(action)
+    
+    """
+    +---------------------------------------------+
+    | METODOS UTILIZADO PARA AS TAREFAS DO PLUGIN |
+    +---------------------------------------------+
+    """
+    """
+        # METODOS PARA LOGIN, LEMBRE-ME E CADASTRO NO COPERNICUS
+    """
+    def login(self):
+        """
+        Este método é responsavel por validar o cadastro do usuario no sistema copernicus
+        e obter o token de acesso como o qual ele poderá obter o produtos (pacotes de imagens do mesmo)
+        """
 
+        # Pega usuario e senha das caixas de edição
+        #self.usuario = self.dlg.lineEdit_5.text().strip()
+        #self.senha = self.dlg.mLineEdit.text().strip()
+
+        # Automatizando preenchimento de senha e login
+        self.usuario = self.user["user"]["login"]
+        self.senha = self.user["user"]["pass"]
+
+        # tenta fazer conexão
+        try:
+            self.token = self.pegar_token(self.usuario, self.senha)
+            # se o token estiver ok
+            if self.token is not None:
+                # exibe mensagem
+                self.pop_up(3, "Acesso Autorizado!", 3)
+                # ativa a tabela de parametros
+                self.dlg.tabWidget.setTabEnabled(1, True)
+            else:
+                self.pop_up(1, "Senha ou usuário incorretos", 5)
+        except Exception as e:
+            self.pop_up(1, "Senha ou usuário incorretos", 5)
+
+    def pegar_token(self, usuario, senha):
+        """
+            # Metodo para obter o token de acesso ao copernicus e seus recursos e serviços 
+        """
+        # criando conjunto de dados
+        dados = {
+            "client_id": "cdse-public",
+            "username": usuario,
+            "password": senha,
+            "grant_type": "password"
+        }
+
+        # tentando obter o token
+        try:
+            resposta = requests.post(URL_AUTH, data=dados)
+            resposta.raise_for_status()
+            return resposta.json()["access_token"]
+        except Exception as e:
+            raise Exception(f"Falha ao criar o token de acesso. Resposta de servidor {resposta.json()}")
+
+    def pop_up(self, codigo, mensagem, tempo):
+        # de acordo com o codigo é exibida uma determinada mensagem e tempo
+        if codigo == 0:
+            self.mensagens.clearWidgets()
+            self.mensagens.pushMessage(mensagem, level=Qgis.Info, duration=tempo)
+            QgsApplication.processEvents()
+        elif codigo == 1:
+            self.mensagens.clearWidgets()
+            self.mensagens.pushMessage(mensagem, level=Qgis.Warning, duration=tempo)
+            QgsApplication.processEvents()
+        elif codigo == 2:
+            self.mensagens.clearWidgets()
+            self.mensagens.pushMessage(mensagem, level=Qgis.Critical, duration=tempo)
+            QgsApplication.processEvents()
+        elif codigo == 3:
+            self.mensagens.clearWidgets()
+            self.mensagens.pushMessage(mensagem, level=Qgis.Success, duration=tempo)
+            QgsApplication.processEvents()
+        else:
+            print("Erro: Código invalido")
+
+    def abir_site_copernicus(self):
+        url = QUrl(URL_CREATE_COUNT)
+        QDesktopServices.openUrl(url)
+
+    """
+        # METODOS PARA DOWNLOAD DOS PRODUTOS DO COPERNICUS POR MEIO DE UM PRODUTO PASSADO. 
+    """
+    def download(self):
+        """
+        - pega as coordendas
+        - pega os ids
+        - cria requisição
+        - faz download da banda
+        """
+        try:
+            # pegando o caminho do shape file pela linha de edição.
+            # shape_file_path = self.dlg.lineEdit.text()
+            # automatizando o processo 
+            shape_file_path = self.user["rotas"]["shape"]
+            
+            # adiciona o vetor no Layer do Qgis
+            self.iface.addVectorLayer(shape_file_path, "Shape", "ogr")
+            shape = QgsProject.instance().mapLayersByName("Shape")[0]
+            # Recupera o shape pelo path
+            layer = QgsVectorLayer(shape_file_path, "Shape", "ogr")
+            
+            # verificação do layer
+            if layer is None:
+                self.pop_up(2, "Crítico: Shape não encontrado.", 5)
+            else:
+                # pega as coordenada e retorna as string do poligono
+                poligono = self.pegar_coordenadas(layer)
+                # tenta pegar as datas
+                data = self.pegar_datas()    
+        except Exception as e:
+            print(f"Erro: {e}")
+    
+    def carregar_shape_file(self):
+        """
+        # Ao clicar no botão ao lado do campo do shapefile o usuário pode buscar um shape file no seu diretório 
+        """
+        # limpa a linha de edição do caminho do shapefile
+        self.dlg.lineEdit.clear()
+        shape = QFileDialog.getOpenFileName(self.dlg, "Select input file", "", "*.shp")
+        self.dlg.lineEdit.setText(shape[0])
+
+    def pegar_coordenadas(self, shape):
+        # Pega os pontos as coordenadas do shapefile e retorna as coordenadas do poligono
+        try:
+            # Pegando as coordenadas do shape file
+            xMin = shape.extent().xMinimum()
+            xMax = shape.extent().xMaximum()
+            yMin = shape.extent().yMinimum()
+            yMax = shape.extent().yMaximum()
+
+            # criando os pontos
+            ponto1 = "{:.2f} {:.2f}".format(xMax, yMin)
+            ponto2 = "{:.2f} {:.2f}".format(xMin, yMin)
+            ponto3 = "{:.2f} {:.2f}".format(xMin, yMax)
+            ponto4 = "{:.2f} {:.2f}".format(xMax, yMax)
+
+            # criando o poligono
+            poligono = "POLYGON(({}, {}, {}, {}, {}))".format(ponto1, ponto2, ponto3, ponto4, ponto1)
+            
+            # retorna poligono
+            return poligono
+                           
+        except Exception as e:
+            print(f"Erro:{e}")
+            self.pop_up(2, "Houve um  erro ao pegar as coordenadas", 5)
+            return None
+    
+    def pegar_datas(self):
+        # tenta pegar as datas
+        try:
+            # lê os campos de edição
+            dataInicial = self.dlg.dateEdit.text().replace("/", "-")
+            dataFinal = self.dlg.dateEdit_2.text().replace("/", "-")
+            # dividindo a tada em dia, mes e ano
+            dia, mes, ano = dataInicial.split('-')
+            dia1, mes1, ano1 = dataFinal.split('-')
+            # formatado as datas
+            dataInicial = f"{ano}-{mes}-{dia}"
+            dataFinal = f"{ano1}-{mes1}-{dia1}"
+            # convertendo para objetos do tipo data
+            formato = "%Y-%m-%d"
+            data1 = datetime.strptime(dataInicial, formato)
+            data2 = datetime.strptime(dataFinal, formato)
+            # comparando as datas
+            if data1 > data2: 
+                self.pop_up(2, "Erro: intervalo de datas inválido, data inicial maior que data final", 5)
+            elif data1 <= data2:
+                data = [dataInicial, dataFinal]
+                return data
+        except Exception as e:
+            self.pop_up(2, "Erro: ao pegar as datas", 3)
+
+    def pegar_ids_produtos(self, coordenadas, data):
+        pass
+
+    def criar_requisicao_download(self, idProduto):
+        pass
+
+    def download_banda(self, caminho, secao, requisicao, nome):
+        pass
 
     def run(self):
         """Run method that performs all the real work"""
@@ -191,10 +406,51 @@ class Ceres:
 
         # show the dialog
         self.dlg.show()
+
+        """
+        +---------------------------+
+        | limpa as linhas de edição |
+        +---------------------------+ 
+        """
+        #Linha do shapefile
+        self.dlg.lineEdit.clear()
+        
+        """
+        +---------------------------+
+        |   conectores de botões    |
+        +---------------------------+
+        """
+        self.dlg.pushButton.clicked.connect(self.login)
+        self.dlg.commandLinkButton.clicked.connect(self.abir_site_copernicus)
+        self.dlg.pushButton_2.clicked.connect(self.download)
+        self.dlg.toolButton.clicked.connect(self.carregar_shape_file)
+        
+        # desliga a segunda aba
+        self.dlg.tabWidget.setTabEnabled(1, False)
+
+        # verifica se  o botão de lembre esta ativo
+        if not self.dlg.checkBox.isChecked():
+            # limpa os campos de login e de senha
+            self.dlg.lineEdit_5.clear()
+            self.dlg.mLineEdit.clear()
+        
         # Run the dialog event loop
         result = self.dlg.exec_()
+        
         # See if OK was pressed
         if result:
             # Do something useful here - delete the line containing pass and
             # substitute with your code.
             pass
+       
+        
+        """
+        +------------------------------+
+        |   desconectores de botões    |
+        +------------------------------+
+        """
+        self.dlg.pushButton.clicked.disconnect(self.login)
+        self.dlg.pushButton_2.clicked.disconnect(self.download)
+        self.dlg.toolButton.clicked.disconnect(self.carregar_shape_file)
+        
+       
