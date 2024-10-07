@@ -322,7 +322,7 @@ class Ceres:
                 # pega as coordenada e retorna as string do poligono
                 poligono = self.pegar_coordenadas(layer)
                 # tenta pegar as datas
-                data = self.pegar_datas() 
+                data = self.pegar_datas()    
         except Exception as e:
             print(f"Erro: {e}")
     
