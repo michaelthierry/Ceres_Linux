@@ -47,6 +47,7 @@ from PyQt5.QtGui    import QDesktopServices
 from datetime       import datetime
 import json
 import requests
+#import pandas as  dataframe
 
 
 
@@ -322,7 +323,11 @@ class Ceres:
                 # pega as coordenada e retorna as string do poligono
                 poligono = self.pegar_coordenadas(layer)
                 # tenta pegar as datas
-                data = self.pegar_datas()    
+                data = self.pegar_datas()
+                print(poligono, data)
+
+                self.pegar_ids_produtos(poligono, data)
+
         except Exception as e:
             print(f"Erro: {e}")
     
@@ -387,8 +392,33 @@ class Ceres:
             self.pop_up(2, "Erro: ao pegar as datas", 3)
 
     def pegar_ids_produtos(self, coordenadas, data):
-        pass
-
+        # Atributos que desejamos que os produtos atendam (productType = 'S2MSI2A')
+        atributosImagem = "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' and att/OData.CSC.StringAttribute/Value eq 'S2MSI2A')"
+        # A area de interesse que desejamos pegar
+        regiaoPoligono = f"OData.CSC.Intersects(area=geography'SRID=4326;{coordenadas}')"
+        # O periodo temporal do qual desejamos pegar a imagem
+        intervaloTempo = f"ContentDate/Start gt {data[0]}T00:00:00.000Z and ContentDate/Start lt {data[1]}T00:00:00.000Z"
+        # criando o filtro
+        filtro = f"filter=Collection/Name eq 'SENTINEL-2' and {regiaoPoligono} and {atributosImagem} and {intervaloTempo}"
+        # criando requisição de produtos
+        requisicao = (
+            f"https://catalogue.dataspace.copernicus.eu/odata/v1/Products?${filtro}"
+        )
+        # cria um dataframe
+        identificadores = []
+        # tenta
+        try:
+            # Obter as resposta da requisição
+            resposta = requests.get(requisicao).json()
+            # Pegando identifcares 
+            identificadores = [item["Id"] for item in resposta["value"]]
+            # retornando 
+            return identificadores
+        except Exception as e:
+            # lança excessão
+            print("Erro:", e)
+            # retona os identificares vazios
+            return identificadores
     def criar_requisicao_download(self, idProduto):
         pass
 
