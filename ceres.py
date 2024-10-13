@@ -42,11 +42,12 @@ from qgis.core  import(
     QgsProject,
     QgsVectorLayer
 )
-from PyQt5.QtCore   import QUrl
+from PyQt5.QtCore   import QUrl, QTimer
 from PyQt5.QtGui    import QDesktopServices
-from datetime       import datetime
+from datetime       import datetime, date
 import json
 import requests
+import time
 #import pandas as  dataframe
 
 
@@ -321,12 +322,56 @@ class Ceres:
                 self.pop_up(2, "Crítico: Shape não encontrado.", 5)
             else:
                 # pega as coordenada e retorna as string do poligono
-                poligono = self.pegar_coordenadas(layer)
+                #poligono = self.pegar_coordenadas(layer)
                 # tenta pegar as datas
-                data = self.pegar_datas()
-                print(poligono, data)
+                #data = self.pegar_datas()
+                #print(poligono, data)
+                data =['2024-01-01', '2024-01-15']
+                idProdutos = self.pegar_ids_produtos("POLYGON((-53.01 -15.31, -53.03 -15.31, -53.03 -15.29, -53.01 -15.29, -53.01 -15.31))", data)
 
-                self.pegar_ids_produtos(poligono, data)
+                if len(idProdutos) == 0:
+                    self.pop_up(2, "Erro: Não há produtos para o intervalos em específico", 5)
+                else:
+                    # pega a data atual
+                    dataAtual = str(date.today())
+                    # caminho onde os downloads ficaram
+                    path = os.environ.get("HOME") + "/Downloads/NDVI/" + f"{dataAtual}"
+                    # criando cabeçalho
+                    header = {
+                        "Authorization": f"Bearer {self.token}",
+                        "Content-Type": "application/json",
+                    }
+
+                    # criando a session
+                    secao = requests.Session()
+                    # atualizando o cabecalho
+                    secao.headers.update(header)
+                    # inicializando o download
+                    for indice in range(len(idProdutos)):
+                        # exibe mesagem de download
+                        self.mensagens.pushMessage(
+                            f"Aviso: download...{indice+1}/{len(idProdutos)}",
+                            level=Qgis.Warning,
+                            duration=5
+                        )
+                        QgsApplication.processEvents()
+                        # pega o nome dos produtos e as querys
+                        nomes, querys = self.criar_requisicao_download(idProdutos[indice])
+                        # para cada query faz o download das bandas em especifico
+                        for query in range(len(querys)):
+                            time.sleep(10)
+                            print(query)
+
+                    # limpando a janela    
+                    self.mensagens.clearWidgets()
+                    # exibindo a mensagem
+                    self.mensagens.pushMessage(
+                        "Info: download concluido",
+                        level=Qgis.Info,
+                        duration=5
+                    )
+                    QgsApplication.processEvents()
+
 
         except Exception as e:
             print(f"Erro: {e}")
@@ -419,8 +464,30 @@ class Ceres:
             print("Erro:", e)
             # retona os identificares vazios
             return identificadores
+        
     def criar_requisicao_download(self, idProduto):
-        pass
+        # procurando  o id do nó interno
+        url = f"https://zipper.dataspace.copernicus.eu/odata/v1/Products({idProduto})/Nodes"
+        json = requests.get(url).json()
+        idInterno = json['result'][0]['Id']
+        # procurando pelo nome interno do produto
+        url = url + f"({idInterno})/Nodes(GRANULE)/Nodes"
+        json = requests.get(url).json()
+        idNome = json['result'][0]['Id']
+        # pegando todos os produtos da pasta com resolução de 10 metros
+        url = url + f"({idNome})/Nodes(IMG_DATA)/Nodes(R10m)/Nodes"
+        json = requests.get(url).json()
+        # pegando o nome das bandas
+        banda4 = json['result'][3]['Id']
+        banda8 = json['result'][4]['Id']
+        # criando as querys
+        queryBanda4 = url + f"({banda4})/$value"
+        queryBanda8 = url + f"({banda8})/$value"
+        querys = (queryBanda4, queryBanda8)
+        #criando o nome dos arquivos (adicionando apenas a extensão rsrsrs)
+        nomes = [banda4, banda8]
+        # retornando os nomes
+        return nomes, querys
 
     def download_banda(self, caminho, secao, requisicao, nome):
         pass
