@@ -359,8 +359,11 @@ class Ceres:
                         nomes, querys = self.criar_requisicao_download(idProdutos[indice])
                         # para cada query faz o download das bandas em especifico
                         for query in range(len(querys)):
-                            time.sleep(10)
-                            print(query)
+                            # tenta fazer os downloads 
+                            try:
+                                self.download_banda(path, secao, querys[query], nomes[query])
+                            except Exception as e:
+                                print(f"Erro:{e}")
 
                     # limpando a janela    
                     self.mensagens.clearWidgets()
@@ -490,7 +493,40 @@ class Ceres:
         return nomes, querys
 
     def download_banda(self, caminho, secao, requisicao, nome):
-        pass
+        '''
+        # Faz o download das bandas dos produtos encontrados
+        # Argumentos:
+        #   caminho: onde o download deve ser feito
+        #   secao: credenciais utilizadas para fazer o download dos produtos
+        #   requisição: produtos escolhidos para download
+        #   nome: nome dos pordutos a serem baixados 
+        '''
+        
+        # verifica tenta obter os produtos
+        try:
+            # pega a resposta de autorização
+            resposta = secao.get(requisicao, stream=True)
+            # verifica a resposta
+            if(resposta.status_code == 200):
+                # cria a pasta se não existir e o local onde o arquivo será salvo
+                os.makedirs(caminho, exist_ok=True)
+                caminho_total = caminho + f'/{nome}'
+                # tenta fazer o donwload dos produtos
+                try:
+                    with open(caminho_total, 'wb') as arquivo:
+                        for chunk in resposta.iter_content(chunk_size=8192):
+                            if chunk:
+                                arquivo.write(chunk)
+                        print(f"Download completo:{nome}")
+                except Exception as e:
+                    print(f'Erro:{e}')
+            else:
+                print(f'Erro:{resposta.status_code} - {resposta.text}')
+
+        except Exception as e:
+            # Abre um popup exibindo o erro
+            print("Erro:", e)
+
 
     def run(self):
         """Run method that performs all the real work"""
