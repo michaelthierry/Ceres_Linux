@@ -371,7 +371,7 @@ color: rgb(11, 11, 11);</string>
       <property name="styleSheet">
        <string notr="true">color: rgb(245, 203, 92);
 color: rgb(11, 11, 11);
-</string>
+selection-color: rgb(224, 27, 36);</string>
       </property>
      </widget>
      <widget class="QLabel" name="label_9">

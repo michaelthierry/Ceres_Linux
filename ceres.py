@@ -306,76 +306,80 @@ class Ceres:
         - faz download da banda
         """
         try:
-            # pegando o caminho do shape file pela linha de edição.
-            # shape_file_path = self.dlg.lineEdit.text()
-            # automatizando o processo 
-            shape_file_path = self.user["rotas"]["shape"]
-            
-            # adiciona o vetor no Layer do Qgis
-            self.iface.addVectorLayer(shape_file_path, "Shape", "ogr")
-            shape = QgsProject.instance().mapLayersByName("Shape")[0]
-            # Recupera o shape pelo path
-            layer = QgsVectorLayer(shape_file_path, "Shape", "ogr")
-            
-            # verificação do layer
-            if layer is None:
-                self.pop_up(2, "Crítico: Shape não encontrado.", 5)
-            else:
-                # pega as coordenada e retorna as string do poligono
-                #poligono = self.pegar_coordenadas(layer)
-                # tenta pegar as datas
-                #data = self.pegar_datas()
-                #print(poligono, data)
-                data =['2024-01-01', '2024-01-15']
-                idProdutos = self.pegar_ids_produtos("POLYGON((-53.01 -15.31, -53.03 -15.31, -53.03 -15.29, -53.01 -15.29, -53.01 -15.31))", data)
+            # pegando o caminho do shape file pela linha de edição e removendo espaços se houver e verifica se o caminho
+            caminhoArquivo = self.dlg.lineEdit.text().replace(" ", "")
+            # se o caminho for fazio ou shape nenhum shape foi carregado
+            if caminhoArquivo != "" and os.path.isfile(caminhoArquivo):
+                # automatico
+                # caminhoArquivo = self.user["rotas"]["shape"]
 
-                if len(idProdutos) == 0:
-                    self.pop_up(2, "Erro: Não há produtos para o intervalos em específico", 5)
+                # tenta pegar as datas 
+                data = self.pegar_datas()
+
+                # se a data não for nula
+                if data is not None:
+                    # adiciona o vetor no Layer principal do Qgis com nome de "Shape" Recupera o shape pelo caminho 
+                    self.iface.addVectorLayer(caminhoArquivo, "Shape", "ogr")
+                    shape = QgsProject.instance().mapLayersByName("Shape")[0]   
+                    layer = QgsVectorLayer(caminhoArquivo, "Shape", "ogr")
+                    # se o layer for fazio então nenhum shape foi carregado 
+                    if layer is None:
+                        self.pop_up(2, "Crítico: Shape não encontrado.", 5)
+                    else:
+                        # pega as coordenada e retorna as string do poligono e pega os produtos no periodo
+                        poligono = self.pegar_coordenadas(layer)
+                        idProdutos = self.pegar_ids_produtos(poligono, data)
+                        # pegar ids do produtos
+                        if len(idProdutos) == 0:
+                            self.pop_up(2, "Erro: Não há produtos para o intervalos em específico", 5)
+                        else:
+                            # pega a data atual
+                            dataAtual = str(date.today())
+                            # caminho onde os downloads ficaram
+                            caminho = os.environ.get("HOME") + "/Downloads/NDVI/" + f"{dataAtual}"
+                            # criando cabeçalho
+                            header = {
+                                "Authorization": f"Bearer {self.token}",
+                                "Content-Type": "application/json",
+                            }
+                            # criando a session
+                            secao = requests.Session()
+                            # atualizando o cabecalho
+                            secao.headers.update(header)
+                            # inicializando o download
+                            for indice in range(len(idProdutos)):
+                                # exibe mesagem de download
+                                self.mensagens.pushMessage(
+                                    f"Aviso: download...{indice+1}/{len(idProdutos)}",
+                                    level=Qgis.Warning,
+                                    duration=5
+                                )
+                                QgsApplication.processEvents()
+                                # pega o nome dos produtos e as querys
+                                nomes, querys = self.criar_requisicao_download(idProdutos[indice])
+                                # para cada query faz o download das bandas em especifico
+                                for query in range(len(querys)):
+                                    # tenta fazer os downloads 
+                                    try:
+                                        self.download_banda(caminho, secao, querys[query], nomes[query])
+                                    except Exception as e:
+                                        print(f"Erro:{e}")
+                            # limpando a janela    
+                            self.mensagens.clearWidgets()
+                            # exibindo a mensagem
+                            self.mensagens.pushMessage(
+                                "Info: download concluido",
+                                level=Qgis.Info,
+                                duration=5
+                            )
+                            QgsApplication.processEvents()
+                            self.dlg.label_8.setText(caminho)
+                            
                 else:
-                    # pega a data atual
-                    dataAtual = str(date.today())
-                    # caminho onde os downloads ficaram
-                    path = os.environ.get("HOME") + "/Downloads/NDVI/" + f"{dataAtual}"
-                    # criando cabeçalho
-                    header = {
-                        "Authorization": f"Bearer {self.token}",
-                        "Content-Type": "application/json",
-                    }
-
-                    # criando a session
-                    secao = requests.Session()
-                    # atualizando o cabecalho
-                    secao.headers.update(header)
-                    # inicializando o download
-                    for indice in range(len(idProdutos)):
-                        # exibe mesagem de download
-                        self.mensagens.pushMessage(
-                            f"Aviso: download...{indice+1}/{len(idProdutos)}",
-                            level=Qgis.Warning,
-                            duration=5
-                        )
-                        QgsApplication.processEvents()
-                        # pega o nome dos produtos e as querys
-                        nomes, querys = self.criar_requisicao_download(idProdutos[indice])
-                        # para cada query faz o download das bandas em especifico
-                        for query in range(len(querys)):
-                            # tenta fazer os downloads 
-                            try:
-                                self.download_banda(path, secao, querys[query], nomes[query])
-                            except Exception as e:
-                                print(f"Erro:{e}")
-
-                    # limpando a janela    
-                    self.mensagens.clearWidgets()
-                    # exibindo a mensagem
-                    self.mensagens.pushMessage(
-                        "Info: download concluido",
-                        level=Qgis.Info,
-                        duration=5
-                    )
-                    QgsApplication.processEvents()
-
-
+                    print("Erro: de data")
+            else:
+                # Exibe um mensagem ao usuário
+                self.pop_up(2, "Erro: nenhum shapefile foi passado ou o arquivo é invalido", 2)
         except Exception as e:
             print(f"Erro: {e}")
     
@@ -430,14 +434,16 @@ class Ceres:
             formato = "%Y-%m-%d"
             data1 = datetime.strptime(dataInicial, formato)
             data2 = datetime.strptime(dataFinal, formato)
-            # comparando as datas
-            if data1 > data2: 
-                self.pop_up(2, "Erro: intervalo de datas inválido, data inicial maior que data final", 5)
-            elif data1 <= data2:
+            # comparando as datas 
+            if data1 >= data2: 
+                self.pop_up(2, "Erro: intervalo de datas inválido, data inicial maior ou igual que data final", 5)
+                return None
+            elif data1 < data2:
                 data = [dataInicial, dataFinal]
                 return data
         except Exception as e:
             self.pop_up(2, "Erro: ao pegar as datas", 3)
+            return None
 
     def pegar_ids_produtos(self, coordenadas, data):
         # Atributos que desejamos que os produtos atendam (productType = 'S2MSI2A')
@@ -536,7 +542,9 @@ class Ceres:
         if self.first_start == True:
             self.first_start = False
             self.dlg = CeresDialog()
+            self.dlg.label_8.setText("Click no botão para fazer download")
 
+        self.dlg.label_8.setText("Click no botão para fazer download")
         # show the dialog
         self.dlg.show()
 
