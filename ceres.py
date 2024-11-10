@@ -47,9 +47,8 @@ from PyQt5.QtGui    import QDesktopServices
 from datetime       import datetime, date
 import json
 import requests
-import time
 #import pandas as  dataframe
-
+import processing
 
 
 URL_AUTH = "https://identity.dataspace.copernicus.eu/auth/realms/CDSE/protocol/openid-connect/token"
@@ -566,18 +565,34 @@ class Ceres:
                 # Tenta carregar o banda 4
                 try:
                     # verifica a banda 4
-                    banda4 = self.dlg.lineEdit_2.text()
-                    if banda4 is None or banda4 == "":
+                    banda4Path = self.dlg.lineEdit_2.text()
+                    if banda4Path is None or banda4Path == "":
                         self.pop_up(2, "Erro: Nenhum arquivo JP2 selecionado no Banda A", 2)
                     else:
                         # tenta carregar bando 8
                         try:
-                            banda8 = self.dlg.lineEdit_3.text()
+                            banda8Path = self.dlg.lineEdit_3.text()
                             # verifica banda 8
-                            if banda8 is None or banda8 == "":
+                            if banda8Path is None or banda8Path == "":
                                 self.pop_up(2, "Erro: Nenhum arquivo JP2 selecionado no Banda B", 2)
                             else:
-                                pass
+                                try:
+                                    # cria nomes para os arquivos carregados
+                                    shapeNome = "Shape"
+                                    banda4Nome = "Banda 4"
+                                    banda8Nome = "Banda 8"
+                                    # adiciona os arquivos no layer
+                                    self.iface.addRasterLayer(banda4Path, banda4Nome)
+                                    self.iface.addRasterLayer(banda8Path, banda8Nome)
+                                    self.iface.addVectorLayer(shapePath, shapeNome, "ogr")
+                                    # recortar a banda 
+                                    self.recortar_raster(shapeNome, banda8Nome)
+                                    self.recortar_raster(shapeNome, banda4Nome)
+                                    # 
+
+                                except Exception as exc:
+                                    self.pop_up(2, "Erro: ao carregar arquivos no Layer", 2)
+                                    print(exc)
 
                         except:
                             self.pop_up(2, "Erro: ao carregar o path de Banda 8", 2)
@@ -586,6 +601,38 @@ class Ceres:
         except:
             self.pop_up(2, "Erro: ao carregar o path do arquivo", 2)
     
+    def recortar_raster(self, shapeNome, rasterNome):
+        """
+        Esta função recebe o nome do shapefile e do raster a ser cortado
+        - Tenta pegar o arquivos do layer
+        - criar os parâmetros 
+        - Recorta o arquivo com o gdal:cliprasterbymasklayer
+        - Adiciona o recorte no layer
+        """
+        try:
+            raster = QgsProject.instance().mapLayersByName(rasterNome)[0]
+            try:
+                vector = QgsProject.instance().mapLayersByName(shapeNome)[0]
+                try:
+                    # cria parametros
+                    parametros = {
+                        "INPUT" : raster,
+                        "MASK"  : vector,
+                        "OUTPUT": "TEMPORARY_OUTPUT",
+                    }
+                    # processando mapa
+                    mapa = processing.run("gdal:cliprasterbymasklayer", parametros)
+                    # pegando o recortando
+                    recorte = mapa["OUTPUT"]
+                    # atribuindo mapa ao layer
+                    self.iface.addRasterLayer(recorte, "Recorte da " + rasterNome)
+                except: 
+                    self.pop_up(2, f"Erro: ao recortar a banda: {rasterNome}")
+            except:
+                self.pop_up(2, "Erro: ao pegar vetorial do layer", 2)
+        except:
+            self.pop_up(2, "Erro: ao pegar rater do layer", 2)
+
 
     def run(self):
         """Run method that performs all the real work"""
