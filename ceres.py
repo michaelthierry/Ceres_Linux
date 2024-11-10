@@ -588,7 +588,8 @@ class Ceres:
                                     # recortar a banda 
                                     self.recortar_raster(shapeNome, banda8Nome)
                                     self.recortar_raster(shapeNome, banda4Nome)
-                                    # 
+                                    # calculando NDVI
+                                    self.calcular_ndvi("Recorte da Banda 8", "Recorte da Banda 4", "(A-B)/(A+B)")
 
                                 except Exception as exc:
                                     self.pop_up(2, "Erro: ao carregar arquivos no Layer", 2)
@@ -633,6 +634,44 @@ class Ceres:
         except:
             self.pop_up(2, "Erro: ao pegar rater do layer", 2)
 
+    def calcular_ndvi(self, recorte4Nome, recorte8Nome, funcao):
+        """
+        # Essa função é responsavel pelo calculo de NDVI
+        - Tenta pegar os recortes das bandas
+        - Cria os parametros de calculo
+        - Faz o calculo com a função passada
+        - Adiciona o resultado no Layer.
+        """
+        try:
+            recorteBanda8 = QgsProject.instance().mapLayersByName(recorte8Nome)[0]
+
+            try:
+                recorteBanda4 = QgsProject.instance().mapLayersByName(recorte4Nome)[0]
+
+                try:
+
+                    parametros = {
+                        "INPUT_A"   :   recorteBanda8,
+                        "BAND_A"    :   "1",
+                        "INPUT_B"   :   recorteBanda4,
+                        "BAND_B"    :   "1",
+                        "FORMULA"   :   funcao,
+                        "OUTPUT"    :   "TEMPORARY_OUTPUT",
+                        "RTYPE"     :   5,
+                        "NO_DATA"   :   "",
+                    }
+
+                    mapa = processing.run("gdal:rastercalculator", parametros)
+                    ndvi = mapa["OUTPUT"]
+
+                    self.iface.addRasterLayer(ndvi, "NDVI")
+                    
+                except:
+                    self.pop_up(2, "Erro: ao processar os recortes", 2)
+            except:
+                self.pop_up(2, "Erro: ao carregar recorte 4", 2)
+        except:
+            self.pop_up(2, "Erro: ao carregar recorte 8", 2)
 
     def run(self):
         """Run method that performs all the real work"""
