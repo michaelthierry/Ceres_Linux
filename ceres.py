@@ -545,6 +545,48 @@ class Ceres:
         raster = QFileDialog.getOpenFileName(self.dlg, "Select input file", "", "*.jp2")
         self.dlg.lineEdit_3.setText(raster[0])
 
+    """
+        # METODO PARA GERAR MAPAS NDVI E SUAS ESTATÍSTICAS
+    """
+
+    def gerar_mapa_ndvi(self):
+        '''
+        # Essa função pega: o shapefile, banda 4 e banda 8.
+        # Recorta as bandas de acordo com a forma do shapefile
+        # Gera o mapa NDVI e o colore
+        # Gera as estatisticas
+        '''
+        # tenta carregar o shape file
+        try:
+            shapePath = self.dlg.lineEdit.text()
+            # verifica o shapefile
+            if shapePath is None or shapePath == "":
+                self.pop_up(2, "Erro: Nenhum arquivo Shapefile selecionado.", 2)
+            else:
+                # Tenta carregar o banda 4
+                try:
+                    # verifica a banda 4
+                    banda4 = self.dlg.lineEdit_2.text()
+                    if banda4 is None or banda4 == "":
+                        self.pop_up(2, "Erro: Nenhum arquivo JP2 selecionado no Banda A", 2)
+                    else:
+                        # tenta carregar bando 8
+                        try:
+                            banda8 = self.dlg.lineEdit_3.text()
+                            # verifica banda 8
+                            if banda8 is None or banda8 == "":
+                                self.pop_up(2, "Erro: Nenhum arquivo JP2 selecionado no Banda B", 2)
+                            else:
+                                pass
+
+                        except:
+                            self.pop_up(2, "Erro: ao carregar o path de Banda 8", 2)
+                except:
+                    self.pop_up(2, "Erro: ao carregar o path de Banda 4", 2)
+        except:
+            self.pop_up(2, "Erro: ao carregar o path do arquivo", 2)
+    
+
     def run(self):
         """Run method that performs all the real work"""
 
@@ -582,6 +624,7 @@ class Ceres:
         self.dlg.toolButton.clicked.connect(self.carregar_shape_file)
         self.dlg.toolButton_2.clicked.connect(self.carrega_banda_4)
         self.dlg.toolButton_3.clicked.connect(self.carrega_banda_8)
+        self.dlg.pushButton_3.clicked.connect(self.gerar_mapa_ndvi)
         
         # desliga a segunda aba
         self.dlg.tabWidget.setTabEnabled(1, False)
@@ -611,5 +654,6 @@ class Ceres:
         self.dlg.pushButton_2.clicked.disconnect(self.download)
         self.dlg.toolButton.clicked.disconnect(self.carregar_shape_file)
         self.dlg.toolButton_2.clicked.disconnect(self.carrega_banda_4)
-        self.dlg.toolButton_3.clicked.disconnect(self.carrega_banda_8)        
-       
+        self.dlg.toolButton_3.clicked.disconnect(self.carrega_banda_8)
+        self.dlg.pushButton_3.clicked.disconnect(self.gerar_mapa_ndvi)
+           
