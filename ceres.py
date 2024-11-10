@@ -205,7 +205,6 @@ class Ceres:
         # will be set False in run()
         self.first_start = True
 
-
     def unload(self):
         """Removes the plugin menu item and icon from QGIS GUI."""
         for action in self.actions:
@@ -533,6 +532,18 @@ class Ceres:
             # Abre um popup exibindo o erro
             print("Erro:", e)
 
+    """
+        # METODOS PARA CARREGAR BANDAS
+    """
+    def carrega_banda_4(self):
+        self.dlg.lineEdit_2.clear()
+        raster = QFileDialog.getOpenFileName(self.dlg, "Select input file", "", "*.jp2")
+        self.dlg.lineEdit_2.setText(raster[0])
+
+    def carrega_banda_8(self):
+        self.dlg.lineEdit_3.clear()
+        raster = QFileDialog.getOpenFileName(self.dlg, "Select input file", "", "*.jp2")
+        self.dlg.lineEdit_3.setText(raster[0])
 
     def run(self):
         """Run method that performs all the real work"""
@@ -555,7 +566,11 @@ class Ceres:
         """
         #Linha do shapefile
         self.dlg.lineEdit.clear()
-        
+        #Linha de shapefile 4
+        self.dlg.lineEdit_2.clear()
+        #Linha de shapefile 8
+        self.dlg.lineEdit_3.clear()
+                
         """
         +---------------------------+
         |   conectores de botões    |
@@ -565,6 +580,8 @@ class Ceres:
         self.dlg.commandLinkButton.clicked.connect(self.abir_site_copernicus)
         self.dlg.pushButton_2.clicked.connect(self.download)
         self.dlg.toolButton.clicked.connect(self.carregar_shape_file)
+        self.dlg.toolButton_2.clicked.connect(self.carrega_banda_4)
+        self.dlg.toolButton_3.clicked.connect(self.carrega_banda_8)
         
         # desliga a segunda aba
         self.dlg.tabWidget.setTabEnabled(1, False)
@@ -593,5 +610,6 @@ class Ceres:
         self.dlg.pushButton.clicked.disconnect(self.login)
         self.dlg.pushButton_2.clicked.disconnect(self.download)
         self.dlg.toolButton.clicked.disconnect(self.carregar_shape_file)
-        
+        self.dlg.toolButton_2.clicked.disconnect(self.carrega_banda_4)
+        self.dlg.toolButton_3.clicked.disconnect(self.carrega_banda_8)        
        
