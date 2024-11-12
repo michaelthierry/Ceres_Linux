@@ -40,7 +40,8 @@ from qgis.core  import(
     Qgis,
     QgsApplication,
     QgsProject,
-    QgsVectorLayer
+    QgsVectorLayer,
+    QgsRasterBandStats
 )
 from PyQt5.QtCore   import QUrl, QTimer
 from PyQt5.QtGui    import QDesktopServices
@@ -591,10 +592,15 @@ class Ceres:
                                     # calculando NDVI
                                     self.calcular_ndvi("Recorte da Banda 8", "Recorte da Banda 4", "(A-B)/(A+B)")
 
+                                    try:
+                                        ndvi = QgsProject.instance().mapLayersByName("NDVI")[0]
+                                        self.aplicar_espectro(ndvi)
+                                    except: 
+                                        self.pop_up(2, "Erro: ao carregar arquivos arquivo de NDVI", 2)
+
                                 except Exception as exc:
                                     self.pop_up(2, "Erro: ao carregar arquivos no Layer", 2)
                                     print(exc)
-
                         except:
                             self.pop_up(2, "Erro: ao carregar o path de Banda 8", 2)
                 except:
@@ -665,13 +671,29 @@ class Ceres:
                     ndvi = mapa["OUTPUT"]
 
                     self.iface.addRasterLayer(ndvi, "NDVI")
-                    
+                                     
                 except:
                     self.pop_up(2, "Erro: ao processar os recortes", 2)
             except:
                 self.pop_up(2, "Erro: ao carregar recorte 4", 2)
         except:
             self.pop_up(2, "Erro: ao carregar recorte 8", 2)
+
+    def aplicar_espectro(self, ndvi):
+        try:
+            ndviDados = ndvi.dataProvider().bandStatistics(1, QgsRasterBandStats.All, ndvi.extent(), 0)
+            maximo = ndviDados.maximumValue
+            minimo = ndviDados.minimumValue
+            
+            # Definindo classes
+            classe0 = minimo
+            classe4 = maximo
+
+        except Exception as e:
+            print(f"Erro:{e}")
+    
+    def encontra_meio(self, menorValor, maiorValor):
+        return ((maiorValor - menorValor) / 2.0)
 
     def run(self):
         """Run method that performs all the real work"""
