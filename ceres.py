@@ -22,7 +22,7 @@
  ***************************************************************************/
 """
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication
-from qgis.PyQt.QtGui import QIcon
+from qgis.PyQt.QtGui import QIcon, QColor
 from qgis.PyQt.QtWidgets import (
     QAction,
     QFileDialog
@@ -41,7 +41,12 @@ from qgis.core  import(
     QgsApplication,
     QgsProject,
     QgsVectorLayer,
-    QgsRasterBandStats
+    QgsRasterBandStats,
+    QgsColorRampShader, 
+    QgsRasterShader,
+    QgsSingleBandPseudoColorRenderer,
+    QgsRasterPipe,
+    QgsRasterFileWriter,
 )
 from PyQt5.QtCore   import QUrl, QTimer
 from PyQt5.QtGui    import QDesktopServices
@@ -687,8 +692,49 @@ class Ceres:
             
             # Definindo classes
             classe0 = minimo
+            classe2 = minimo + self.encontra_meio(minimo, maximo)
+            classe1 = minimo + self.encontra_meio(minimo, classe2)
+            classe3 = classe2 + self.encontra_meio(classe2, maximo)
             classe4 = maximo
+            # vetor de classes
+            valores = [classe0, classe1, classe2, classe3, classe4]
+            espectro = [
+                QgsColorRampShader.ColorRampItem(valores[0], QColor("#33a02c")),
+                QgsColorRampShader.ColorRampItem(valores[1], QColor("#a6d96a")),
+                QgsColorRampShader.ColorRampItem(valores[2], QColor("#ffffc0")),
+                QgsColorRampShader.ColorRampItem(valores[3], QColor("#fdae61")),
+                QgsColorRampShader.ColorRampItem(valores[4], QColor("#d7191c"))
+            ]
 
+            # criando um Shader e uma rampa de coloração
+            shader = QgsRasterShader()
+            rampaCor = QgsColorRampShader()
+
+            rampaCor.setColorRampType(QgsColorRampShader.Interpolated)
+            rampaCor.setColorRampItemList(espectro)
+            # atribuindo a rampa ao shader
+            shader.setRasterShaderFunction(rampaCor)
+            # criando o renderizador
+            render = QgsSingleBandPseudoColorRenderer(ndvi.dataProvider(), 1, shader)
+            # atribuindo os máximos e minimos
+            render.setClassificationMin(minimo)
+            render.setClassificationMax(maximo)
+            # renderizando e colorindo
+            render.setRender(render)
+            render.triggerRepaint()
+
+            # Salvando o raster NDVI
+            ndviSalvar = QgsProject.instance().mapLayersByName("NDVI")[0]
+            pathNDVI = QFileDialog.getSaveFileName(self.dlg, "Select output file", "", "*.tif")
+            # criando um pipe para salvar os dados do NDVI criado
+            pipe = QgsRasterPipe()
+            pipe.set(ndviSalvar.renderer().clone())
+            pipe.set(ndviSalvar.dataProvider().clone())
+            # passado o caminho onde escrever os dados
+            arquivoRaster = QgsRasterFileWriter(pathNDVI[0])
+            # escrevendo
+            arquivoRaster.writeRaster(pipe, ndviSalvar.width(), ndviSalvar.height(), ndviSalvar.extent(), ndviSalvar.crs())
+            
         except Exception as e:
             print(f"Erro:{e}")
     
