@@ -22,7 +22,7 @@
  ***************************************************************************/
 """
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication
-from qgis.PyQt.QtGui import QIcon
+from qgis.PyQt.QtGui import QIcon, QColor
 from qgis.PyQt.QtWidgets import (
     QAction,
     QFileDialog
@@ -40,16 +40,21 @@ from qgis.core  import(
     Qgis,
     QgsApplication,
     QgsProject,
-    QgsVectorLayer
+    QgsVectorLayer,
+    QgsRasterBandStats,
+    QgsColorRampShader, 
+    QgsRasterShader,
+    QgsSingleBandPseudoColorRenderer,
+    QgsRasterPipe,
+    QgsRasterFileWriter,
 )
 from PyQt5.QtCore   import QUrl, QTimer
 from PyQt5.QtGui    import QDesktopServices
 from datetime       import datetime, date
 import json
 import requests
-import time
 #import pandas as  dataframe
-
+import processing
 
 
 URL_AUTH = "https://identity.dataspace.copernicus.eu/auth/realms/CDSE/protocol/openid-connect/token"
@@ -545,6 +550,197 @@ class Ceres:
         raster = QFileDialog.getOpenFileName(self.dlg, "Select input file", "", "*.jp2")
         self.dlg.lineEdit_3.setText(raster[0])
 
+    """
+        # METODO PARA GERAR MAPAS NDVI E SUAS ESTATÍSTICAS
+    """
+
+    def gerar_mapa_ndvi(self):
+        '''
+        # Essa função pega: o shapefile, banda 4 e banda 8.
+        # Recorta as bandas de acordo com a forma do shapefile
+        # Gera o mapa NDVI e o colore
+        # Gera as estatisticas
+        '''
+        # tenta carregar o shape file
+        try:
+            shapePath = self.dlg.lineEdit.text()
+            # verifica o shapefile
+            if shapePath is None or shapePath == "":
+                self.pop_up(2, "Erro: Nenhum arquivo Shapefile selecionado.", 2)
+            else:
+                # Tenta carregar o banda 4
+                try:
+                    # verifica a banda 4
+                    banda4Path = self.dlg.lineEdit_2.text()
+                    if banda4Path is None or banda4Path == "":
+                        self.pop_up(2, "Erro: Nenhum arquivo JP2 selecionado no Banda A", 2)
+                    else:
+                        # tenta carregar bando 8
+                        try:
+                            banda8Path = self.dlg.lineEdit_3.text()
+                            # verifica banda 8
+                            if banda8Path is None or banda8Path == "":
+                                self.pop_up(2, "Erro: Nenhum arquivo JP2 selecionado no Banda B", 2)
+                            else:
+                                try:
+                                    # cria nomes para os arquivos carregados
+                                    shapeNome = "Shape"
+                                    banda4Nome = "Banda 4"
+                                    banda8Nome = "Banda 8"
+                                    # adiciona os arquivos no layer
+                                    self.iface.addRasterLayer(banda4Path, banda4Nome)
+                                    self.iface.addRasterLayer(banda8Path, banda8Nome)
+                                    self.iface.addVectorLayer(shapePath, shapeNome, "ogr")
+                                    # recortar a banda 
+                                    self.recortar_raster(shapeNome, banda8Nome)
+                                    self.recortar_raster(shapeNome, banda4Nome)
+                                    # calculando NDVI
+                                    self.calcular_ndvi("Recorte da Banda 8", "Recorte da Banda 4", "(A-B)/(A+B)")
+
+                                    try:
+                                        ndvi = QgsProject.instance().mapLayersByName("NDVI")[0]
+                                        self.aplicar_espectro(ndvi)
+                                    except: 
+                                        self.pop_up(2, "Erro: ao carregar arquivos arquivo de NDVI", 2)
+
+                                except Exception as exc:
+                                    self.pop_up(2, "Erro: ao carregar arquivos no Layer", 2)
+                                    print(exc)
+                        except:
+                            self.pop_up(2, "Erro: ao carregar o path de Banda 8", 2)
+                except:
+                    self.pop_up(2, "Erro: ao carregar o path de Banda 4", 2)
+        except:
+            self.pop_up(2, "Erro: ao carregar o path do arquivo", 2)
+    
+    def recortar_raster(self, shapeNome, rasterNome):
+        """
+        Esta função recebe o nome do shapefile e do raster a ser cortado
+        - Tenta pegar o arquivos do layer
+        - criar os parâmetros 
+        - Recorta o arquivo com o gdal:cliprasterbymasklayer
+        - Adiciona o recorte no layer
+        """
+        try:
+            raster = QgsProject.instance().mapLayersByName(rasterNome)[0]
+            try:
+                vector = QgsProject.instance().mapLayersByName(shapeNome)[0]
+                try:
+                    # cria parametros
+                    parametros = {
+                        "INPUT" : raster,
+                        "MASK"  : vector,
+                        "OUTPUT": "TEMPORARY_OUTPUT",
+                    }
+                    # processando mapa
+                    mapa = processing.run("gdal:cliprasterbymasklayer", parametros)
+                    # pegando o recortando
+                    recorte = mapa["OUTPUT"]
+                    # atribuindo mapa ao layer
+                    self.iface.addRasterLayer(recorte, "Recorte da " + rasterNome)
+                except: 
+                    self.pop_up(2, f"Erro: ao recortar a banda: {rasterNome}")
+            except:
+                self.pop_up(2, "Erro: ao pegar vetorial do layer", 2)
+        except:
+            self.pop_up(2, "Erro: ao pegar rater do layer", 2)
+
+    def calcular_ndvi(self, recorte4Nome, recorte8Nome, funcao):
+        """
+        # Essa função é responsavel pelo calculo de NDVI
+        - Tenta pegar os recortes das bandas
+        - Cria os parametros de calculo
+        - Faz o calculo com a função passada
+        - Adiciona o resultado no Layer.
+        """
+        try:
+            recorteBanda8 = QgsProject.instance().mapLayersByName(recorte8Nome)[0]
+
+            try:
+                recorteBanda4 = QgsProject.instance().mapLayersByName(recorte4Nome)[0]
+
+                try:
+
+                    parametros = {
+                        "INPUT_A"   :   recorteBanda8,
+                        "BAND_A"    :   "1",
+                        "INPUT_B"   :   recorteBanda4,
+                        "BAND_B"    :   "1",
+                        "FORMULA"   :   funcao,
+                        "OUTPUT"    :   "TEMPORARY_OUTPUT",
+                        "RTYPE"     :   5,
+                        "NO_DATA"   :   "",
+                    }
+
+                    mapa = processing.run("gdal:rastercalculator", parametros)
+                    ndvi = mapa["OUTPUT"]
+
+                    self.iface.addRasterLayer(ndvi, "NDVI")
+                                     
+                except:
+                    self.pop_up(2, "Erro: ao processar os recortes", 2)
+            except:
+                self.pop_up(2, "Erro: ao carregar recorte 4", 2)
+        except:
+            self.pop_up(2, "Erro: ao carregar recorte 8", 2)
+
+    def aplicar_espectro(self, ndvi):
+        try:
+            ndviDados = ndvi.dataProvider().bandStatistics(1, QgsRasterBandStats.All, ndvi.extent(), 0)
+            maximo = ndviDados.maximumValue
+            minimo = ndviDados.minimumValue
+            
+            # Definindo classes
+            classe0 = minimo
+            classe2 = minimo + self.encontra_meio(minimo, maximo)
+            classe1 = minimo + self.encontra_meio(minimo, classe2)
+            classe3 = classe2 + self.encontra_meio(classe2, maximo)
+            classe4 = maximo
+            # vetor de classes
+            valores = [classe0, classe1, classe2, classe3, classe4]
+            espectro = [
+                QgsColorRampShader.ColorRampItem(valores[0], QColor("#33a02c")),
+                QgsColorRampShader.ColorRampItem(valores[1], QColor("#a6d96a")),
+                QgsColorRampShader.ColorRampItem(valores[2], QColor("#ffffc0")),
+                QgsColorRampShader.ColorRampItem(valores[3], QColor("#fdae61")),
+                QgsColorRampShader.ColorRampItem(valores[4], QColor("#d7191c"))
+            ]
+
+            # criando um Shader e uma rampa de coloração
+            shader = QgsRasterShader()
+            rampaCor = QgsColorRampShader()
+
+            rampaCor.setColorRampType(QgsColorRampShader.Interpolated)
+            rampaCor.setColorRampItemList(espectro)
+            # atribuindo a rampa ao shader
+            shader.setRasterShaderFunction(rampaCor)
+            # criando o renderizador
+            render = QgsSingleBandPseudoColorRenderer(ndvi.dataProvider(), 1, shader)
+            # atribuindo os máximos e minimos
+            render.setClassificationMin(minimo)
+            render.setClassificationMax(maximo)
+            # renderizando e colorindo
+            render.setRender(render)
+            render.triggerRepaint()
+
+            # Salvando o raster NDVI
+            ndviSalvar = QgsProject.instance().mapLayersByName("NDVI")[0]
+            pathNDVI = QFileDialog.getSaveFileName(self.dlg, "Select output file", "", "*.tif")
+            # criando um pipe para salvar os dados do NDVI criado
+            pipe = QgsRasterPipe()
+            pipe.set(ndviSalvar.renderer().clone())
+            pipe.set(ndviSalvar.dataProvider().clone())
+            # passado o caminho onde escrever os dados
+            arquivoRaster = QgsRasterFileWriter(pathNDVI[0])
+            # escrevendo
+            arquivoRaster.writeRaster(pipe, ndviSalvar.width(), ndviSalvar.height(), ndviSalvar.extent(), ndviSalvar.crs())
+            
+        except Exception as e:
+            print(f"Erro:{e}")
+    
+    def encontra_meio(self, menorValor, maiorValor):
+        return ((maiorValor - menorValor) / 2.0)
+
     def run(self):
         """Run method that performs all the real work"""
 
@@ -582,6 +778,7 @@ class Ceres:
         self.dlg.toolButton.clicked.connect(self.carregar_shape_file)
         self.dlg.toolButton_2.clicked.connect(self.carrega_banda_4)
         self.dlg.toolButton_3.clicked.connect(self.carrega_banda_8)
+        self.dlg.pushButton_3.clicked.connect(self.gerar_mapa_ndvi)
         
         # desliga a segunda aba
         self.dlg.tabWidget.setTabEnabled(1, False)
@@ -611,5 +808,6 @@ class Ceres:
         self.dlg.pushButton_2.clicked.disconnect(self.download)
         self.dlg.toolButton.clicked.disconnect(self.carregar_shape_file)
         self.dlg.toolButton_2.clicked.disconnect(self.carrega_banda_4)
-        self.dlg.toolButton_3.clicked.disconnect(self.carrega_banda_8)        
-       
+        self.dlg.toolButton_3.clicked.disconnect(self.carrega_banda_8)
+        self.dlg.pushButton_3.clicked.disconnect(self.gerar_mapa_ndvi)
+           
