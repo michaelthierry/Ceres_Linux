@@ -740,16 +740,41 @@ class Ceres:
     
     def encontra_meio(self, menorValor, maiorValor):
         return ((maiorValor - menorValor) / 2.0)
+    
+    """
+        # FUNÇÕES PARA FUNÇÕES
+    """
+    # lendo o arquivo de funções
+    def carregar_funcoes(self):
+        try:
+            with open(self.plugin_dir + '/func.json', 'r') as arquivoFuncao:
+                dados = json.load(arquivoFuncao)
+            
+            listaFuncoes = dados["functions"]
 
+            return listaFuncoes
+        
+        except Exception as erro:
+            self.pop_up(2, "Erro: ao carregar arquivo de funçoes", 2)
+            return None
+        
+        
+    """
+        # METODO PRINCIPAL
+    """
     def run(self):
         """Run method that performs all the real work"""
-
+        self.listaFuncoes = self.carregar_funcoes()
         # Create the dialog with elements (after translation) and keep reference
         # Only create GUI ONCE in callback, so that it will only load when the plugin is started
         if self.first_start == True:
             self.first_start = False
             self.dlg = CeresDialog()
             self.dlg.label_8.setText("Click no botão para fazer download")
+            # adicioanando a lista  de funções no combobox
+            self.dlg.comboBox.addItems(self.listaFuncoes)
+            self.dlg.comboBox_2.addItems(self.listaFuncoes)
+
 
         self.dlg.label_8.setText("Click no botão para fazer download")
         # show the dialog
