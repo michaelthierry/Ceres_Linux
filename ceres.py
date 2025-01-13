@@ -55,6 +55,7 @@ import json
 import requests
 #import pandas as  dataframe
 import processing
+import ast
 
 
 URL_AUTH = "https://identity.dataspace.copernicus.eu/auth/realms/CDSE/protocol/openid-connect/token"
@@ -757,8 +758,20 @@ class Ceres:
         except Exception as erro:
             self.pop_up(2, "Erro: ao carregar arquivo de funçoes", 2)
             return None
-        
-        
+
+    def valida_expressao(self, expressao):
+        try:
+            arvoreSintatica = ast.parse(expressao, mode="eval")
+            for no in ast.walk(arvoreSintatica):
+                if isinstance(no, ast.Name) and not isinstance(no.ctx, ast.Load):
+                    raise NameError(f"Simbolo não definido: {no.id}")
+            return True
+        except SyntaxError as err:
+            print(f"Erro de Sintaxe: Simbolo não definido:{err}")
+            return False
+        except NameError as err:
+            print(f"Erro de Definição de Nome:{err}")
+            return False
     """
         # METODO PRINCIPAL
     """
