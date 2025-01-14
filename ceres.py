@@ -801,6 +801,32 @@ class Ceres:
         else:
             self.pop_up(2, "Erro: ao ao cadastrar função (expressão invalida)", 2)
 
+    def remover_funcao(self):
+        try:
+            with open(self.plugin_dir + '/func.json', 'r') as json_file:
+                dados = json.load(json_file)
+            
+            try:
+                funcaoSelecionada = self.dlg.comboBox_2.currentText()
+                dados["functions"].remove(funcaoSelecionada)
+
+                try:
+                    with open(self.plugin_dir + '/func.json', 'w') as json_file:
+                        json.dump(dados, json_file, indent=2)
+                    
+                    self.listaFuncoes = self.carregar_funcoes()
+                    self.dlg.comboBox.clear()
+                    self.dlg.comboBox_2.clear()
+                    self.dlg.comboBox.addItems(self.listaFuncoes)
+                    self.dlg.comboBox_2.addItems(self.listaFuncoes)
+                    
+                except Exception as err:
+                    self.pop_up(2, "Erro ao salvar funções", 2)
+            except Exception as err:
+                self.pop_up(2, "Erro ao remover a função", 2)
+        except Exception as err:
+            self.pop_up(2, "Erro: ao ler arquivo de funções", 2)
+
     """
         # METODO PRINCIPAL
     """
@@ -847,6 +873,7 @@ class Ceres:
         self.dlg.toolButton_3.clicked.connect(self.carrega_banda_8)
         self.dlg.pushButton_3.clicked.connect(self.gerar_mapa_ndvi)
         self.dlg.pushButton_4.clicked.connect(self.adicionar_funcao)
+        self.dlg.pushButton_5.clicked.connect(self.remover_funcao)
         
         # desliga a segunda aba
         self.dlg.tabWidget.setTabEnabled(1, False)
@@ -879,4 +906,4 @@ class Ceres:
         self.dlg.toolButton_3.clicked.disconnect(self.carrega_banda_8)
         self.dlg.pushButton_3.clicked.disconnect(self.gerar_mapa_ndvi)
         self.dlg.pushButton_4.clicked.disconnect(self.adicionar_funcao)
-           
+        self.dlg.pushButton_5.clicked.disconnect(self.remover_funcao)
