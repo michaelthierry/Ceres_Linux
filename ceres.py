@@ -772,6 +772,35 @@ class Ceres:
         except NameError as err:
             print(f"Erro de Definição de Nome:{err}")
             return False
+        
+    def adicionar_funcao(self):
+        funcaoUsuario = self.dlg.lineEdit_4.text().strip()
+
+        if self.valida_expressao(funcaoUsuario):
+            try:
+                with open(self.plugin_dir + '/func.json', 'r') as arquivoFuncao:
+                    dados = json.load(arquivoFuncao)
+                dados["functions"].append(funcaoUsuario)
+
+                with open(self.plugin_dir + '/func.json', 'w') as arquivoFuncao:
+                    json.dump(dados, arquivoFuncao, indent=2)
+                
+                # Recarregando a lista de funções
+                self.listaFuncoes = self.carregar_funcoes()
+                # Limpando o comboBox
+                self.dlg.comboBox.clear()
+                self.dlg.comboBox_2.clear()
+                # Self adiciona a lista
+                self.dlg.comboBox.addItems(self.listaFuncoes)
+                self.dlg.comboBox_2.addItems(self.listaFuncoes)
+                # limpando a linha de edição
+                self.dlg.lineEdit_4.clear()
+                
+            except Exception as err:
+                self.pop_up(2, "Erro: falha ao salvar funçao", 2)
+        else:
+            self.pop_up(2, "Erro: ao ao cadastrar função (expressão invalida)", 2)
+
     """
         # METODO PRINCIPAL
     """
@@ -817,6 +846,7 @@ class Ceres:
         self.dlg.toolButton_2.clicked.connect(self.carrega_banda_4)
         self.dlg.toolButton_3.clicked.connect(self.carrega_banda_8)
         self.dlg.pushButton_3.clicked.connect(self.gerar_mapa_ndvi)
+        self.dlg.pushButton_4.clicked.connect(self.adicionar_funcao)
         
         # desliga a segunda aba
         self.dlg.tabWidget.setTabEnabled(1, False)
@@ -848,4 +878,5 @@ class Ceres:
         self.dlg.toolButton_2.clicked.disconnect(self.carrega_banda_4)
         self.dlg.toolButton_3.clicked.disconnect(self.carrega_banda_8)
         self.dlg.pushButton_3.clicked.disconnect(self.gerar_mapa_ndvi)
+        self.dlg.pushButton_4.clicked.disconnect(self.adicionar_funcao)
            
