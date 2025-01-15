@@ -47,6 +47,7 @@ from qgis.core  import(
     QgsSingleBandPseudoColorRenderer,
     QgsRasterPipe,
     QgsRasterFileWriter,
+    QgsVectorFileWriter
 )
 from PyQt5.QtCore   import QUrl, QTimer
 from PyQt5.QtGui    import QDesktopServices
@@ -743,6 +744,36 @@ class Ceres:
     
     def encontra_meio(self, menorValor, maiorValor):
         return ((maiorValor - menorValor) / 2.0)
+    
+    def gerar_estatistica(self):
+        try:
+            # obtendo o shape e o ndvi porduzidos
+            shape = QgsProject.instance().mapLayersByName("Shape")[0]
+            ndvi = QgsProject.instance().mapLayersByName("NDVI")[0]
+            # estabelecendo parametros 
+            parametro = {
+                "COLUMN_PREFIX": "NDVI",
+                "INPUT": shape,
+                "INPUT_RASTER": ndvi,
+                "OUTPUT": "TEMPORARY_OUTPUT",
+                "RASTER_BAND": 1,
+                "STATISTICS":[0, 1, 2, 3, 4, 5, 6, 7, 10, 11],
+            }
+            # processando e obtendo o receorte do mapa raster
+            dados = processing.run("native:zonalstatisticsfb", parametro)
+            shape = dados['OUTPUT']
+            # salvando em um CSV
+            filename, _  = QFileDialog.getSaveFileName(self.dlg, "Select output file", "*csv")
+            QgsVectorFileWriter.writeAsVectorFormat(
+                shape,
+                filename,
+                "utf-8",
+                shape.crs(),
+                "CSV",
+                attributes=[0, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61]
+            )
+        except Exception as e:
+            self.pop_up(2, f"Erro:ceres:gerarEstatíticas:{e}", 2)
     
     """
         # FUNÇÕES PARA FUNÇÕES
