@@ -595,8 +595,10 @@ class Ceres:
                                     # recortar a banda 
                                     self.recortar_raster(shapeNome, banda8Nome)
                                     self.recortar_raster(shapeNome, banda4Nome)
+                                    # pegando o cálculo selecionado
+                                    funcao = self.dlg.comboBox.currentText()
                                     # calculando NDVI
-                                    self.calcular_ndvi("Recorte da Banda 8", "Recorte da Banda 4", "(A-B)/(A+B)")
+                                    self.calcular_ndvi("Recorte da Banda 4", "Recorte da Banda 8", funcao)
 
                                     try:
                                         ndvi = QgsProject.instance().mapLayersByName("NDVI")[0]
@@ -663,9 +665,9 @@ class Ceres:
                 try:
 
                     parametros = {
-                        "INPUT_A"   :   recorteBanda8,
+                        "INPUT_A"   :   recorteBanda4,
                         "BAND_A"    :   "1",
-                        "INPUT_B"   :   recorteBanda4,
+                        "INPUT_B"   :   recorteBanda8,
                         "BAND_B"    :   "1",
                         "FORMULA"   :   funcao,
                         "OUTPUT"    :   "TEMPORARY_OUTPUT",
@@ -700,11 +702,11 @@ class Ceres:
             # vetor de classes
             valores = [classe0, classe1, classe2, classe3, classe4]
             espectro = [
-                QgsColorRampShader.ColorRampItem(valores[0], QColor("#33a02c")),
-                QgsColorRampShader.ColorRampItem(valores[1], QColor("#a6d96a")),
+                QgsColorRampShader.ColorRampItem(valores[0], QColor("#d7191c")),
+                QgsColorRampShader.ColorRampItem(valores[1], QColor("#fdae61")),
                 QgsColorRampShader.ColorRampItem(valores[2], QColor("#ffffc0")),
-                QgsColorRampShader.ColorRampItem(valores[3], QColor("#fdae61")),
-                QgsColorRampShader.ColorRampItem(valores[4], QColor("#d7191c"))
+                QgsColorRampShader.ColorRampItem(valores[3], QColor("#a6d96a")),
+                QgsColorRampShader.ColorRampItem(valores[4], QColor("#33a02c"))
             ]
 
             # criando um Shader e uma rampa de coloração
@@ -721,8 +723,8 @@ class Ceres:
             render.setClassificationMin(minimo)
             render.setClassificationMax(maximo)
             # renderizando e colorindo
-            render.setRender(render)
-            render.triggerRepaint()
+            ndvi.setRenderer(render)
+            ndvi.triggerRepaint()
 
             # Salvando o raster NDVI
             ndviSalvar = QgsProject.instance().mapLayersByName("NDVI")[0]
