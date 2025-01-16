@@ -763,18 +763,45 @@ class Ceres:
             dados = processing.run("native:zonalstatisticsfb", parametro)
             shape = dados['OUTPUT']
             # salvando em um CSV
-            filename, _  = QFileDialog.getSaveFileName(self.dlg, "Select output file", "*csv")
+            fileName, _  = QFileDialog.getSaveFileName(self.dlg, "Select output file", "*csv")
             QgsVectorFileWriter.writeAsVectorFormat(
                 shape,
-                filename,
+                fileName,
                 "utf-8",
                 shape.crs(),
                 "CSV",
                 attributes=[0, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61]
             )
+            # gerar estatísticas
+            self.gerar_resultados(fileName)
+
         except Exception as e:
             self.pop_up(2, f"Erro:ceres:gerarEstatíticas:{e}", 2)
     
+    def gerar_resultados(self, pathEstatistica):
+        try:
+            dataHora = str(datetime.now().date()) + " -> " + str(datetime.now().time())
+            funcao = self.dlg.comboBox.currentText()
+            dataInicial = self.dlg.dateEdit.text().replace("/", "-")
+            dataFinal = self.dlg.dateEdit.text().replace("/", "-")
+            bandaA = self.dlg.lineEdit_2.text()
+            bandaB = self.dlg.lineEdit_3.text()
+            estatiticas = pathEstatistica
+
+            entradas = os.path.basename(bandaA) + " -> " + os.path.basename(bandaB)
+            texto = f"Datas: {dataHora}\nIntervalo: {dataInicial} -> {dataFinal}\nBandas: {entradas}\nFunção: {funcao}\nEstatísticas: {estatiticas}\n"
+            path = os.path.dirname(pathEstatistica)
+
+            try:
+                with open(f'{path}/meta.txt','w') as meta:
+                    meta.write(texto)
+                    meta.close()
+            except Exception as e:
+                self.pop_up(2, "Erro:Ceres:gerarResultado-> Salvar arquivo", 2)
+
+        except Exception as e:
+            self.pop_up(2, "Erro:Ceres:gerarResultado -> PegarDados", 2)
+
     """
         # FUNÇÕES PARA FUNÇÕES
     """
