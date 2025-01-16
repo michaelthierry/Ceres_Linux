@@ -604,6 +604,7 @@ class Ceres:
                                     try:
                                         ndvi = QgsProject.instance().mapLayersByName("NDVI")[0]
                                         self.aplicar_espectro(ndvi)
+                                        self.gerar_estatistica()
                                     except: 
                                         self.pop_up(2, "Erro: ao carregar arquivos arquivo de NDVI", 2)
 
