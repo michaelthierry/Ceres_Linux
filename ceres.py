@@ -235,12 +235,12 @@ class Ceres:
         """
 
         # Pega usuario e senha das caixas de edição
-        #self.usuario = self.dlg.lineEdit_5.text().strip()
-        #self.senha = self.dlg.mLineEdit.text().strip()
+        self.usuario = self.dlg.lineEdit_5.text().strip()
+        self.senha = self.dlg.mLineEdit.text().strip()
 
         # Automatizando preenchimento de senha e login
-        self.usuario = self.user["user"]["login"]
-        self.senha = self.user["user"]["pass"]
+        #self.usuario = self.user["user"]["login"]
+        #self.senha = self.user["user"]["pass"]
 
         # tenta fazer conexão
         try:
